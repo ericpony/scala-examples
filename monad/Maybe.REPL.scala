@@ -1,24 +1,25 @@
-object REPL {
+object MaybeMonadExample extends App {
+
   sealed trait Maybe[+A] {
 
     // >>=
-    def flatMap[B](f: A => Maybe[B]): Maybe[B]
+    def flatMap[B] (f: A => Maybe[B]): Maybe[B]
 
     // >>
-    def map[B](f: A => B): Maybe[B] = flatMap { a => Just(f(a)) }
+    def map[B] (f: A => B): Maybe[B] = flatMap { a => Just(f(a))}
 
     // join
-    def flatten[B](implicit asMaybeMaybe: Maybe[A] <:< Maybe[Maybe[B]]): Maybe[B] =
+    def flatten[B] (implicit asMaybeMaybe: Maybe[A] <:< Maybe[Maybe[B]]): Maybe[B] =
       asMaybeMaybe(this) flatMap identity
   }
 
-  case class Just[+A](a: A) extends Maybe[A] {
-    override def flatMap[B](f: A => Maybe[B]) = f(a)
+  case class Just[+A] (a: A) extends Maybe[A] {
+    override def flatMap[B] (f: A => Maybe[B]) = f(a)
   }
 
   // Nothing in the Haskel example
   case object MaybeNot extends Maybe[Nothing] {
-    override def flatMap[B](f: Nothing => Maybe[B]) = MaybeNot
+    override def flatMap[B] (f: Nothing => Maybe[B]) = MaybeNot
   }
+
 }
-import REPL._
