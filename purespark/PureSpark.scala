@@ -1,6 +1,6 @@
 import scala.language.implicitConversions
 
-object Spark {
+object Prelude {
 
   type Partition[A] = List[A]
   type RDD[A] = List[Partition[A]]
@@ -29,7 +29,7 @@ object Spark {
   def foldl[A, B] (pa: Partition[A])(z: B)(fn: (B, A) => B): B =
     pa match {
       case Nil     => z
-      case x :: xs => foldl(xs)(z)(fn)
+      case x :: xs => foldl(xs)(fn(z, x))(fn)
     }
 
   def reducel[A] (pa: Partition[A])(fn: (A, A) => A): A =
@@ -59,7 +59,7 @@ object Spark {
 
   def addTo[A, B] (pa: Partition[Pair[A, B]])(pair: Pair[A, B]): Partition[Pair[A, B]] =
     foldl(pa)(List(pair)) {
-      (p1, p2) => if (pair.key == p2.key) p1 else pair :: p1
+      (p1, p2) => if (pair.key == p2.key) p1 else p2 :: p1
     }
 
   def lookup[A, B] (pa: Partition[Pair[A, B]])(key: A): Option[B] =
@@ -121,11 +121,18 @@ object Spark {
 
 object GraphX {
 
-  import Spark._
+  import Prelude._
 
-  case class Edge[B] (srcId: VertexId, dstId: VertexId, attr: B) extends Pair((srcId, dstId), attr)
+  case class Edge[B] (srcId: VertexId,
+                      dstId: VertexId,
+                      attr: B) extends Pair((srcId, dstId), attr)
 
-  case class Vertex[A] (id: VertexId, attr: A) extends Pair(id, attr)
+  case class Vertex[A] (id: VertexId,
+                        attr: A) extends Pair(id, attr)
+
+  case class EdgeTriplet[A, B] (srcId: VertexId, srcAttr: A,
+                                dstId: VertexId, dstAttr: A,
+                                attr: B) extends Pair((srcId, dstId), attr)
 
   type VertexId = Int
   type VertexRDD[A] = RDD[Vertex[A]]
@@ -137,28 +144,37 @@ object GraphX {
     map(rdd)(map(_)(p => Vertex(p.key, p.value)))
 
   def aggregateMessages[A, B, C] (graph: GraphRDD[A, B])
-                                 (sendMsg: (Vertex[A], Vertex[A], B) => List[Vertex[C]])
-                                 (mergeMsg: (C, C) => C): VertexRDD[C] = {
+                                 (sendMsg: EdgeTriplet[A, B] => List[Vertex[C]])
+                                 (mergeMsg: (C, C) => C): VertexRDD[C] =
+    aggregateMessagesWithActiveSet(graph)(sendMsg)(mergeMsg)(concat(graph.vertexRDD))
+
+  def aggregateMessagesWithActiveSet[A, B, C] (graph: GraphRDD[A, B])
+                                              (sendMsg: EdgeTriplet[A, B] => List[Vertex[C]])
+                                              (mergeMsg: (C, C) => C)
+                                              (activeSet: List[Vertex[A]]): VertexRDD[C] = {
+    val edgeRDD = filter(map(graph.edgeRDD)(filter(_) {
+      e => hasKey(activeSet)(e.srcId) || hasKey(activeSet)(e.dstId)
+    }))(_ != Nil)
     val vAttrs = concat(graph.vertexRDD)
     def f (edge: Edge[B]) = {
       val Some(srcAttr) = lookup(vAttrs)(edge.srcId)
       val Some(dstAttr) = lookup(vAttrs)(edge.dstId)
-      sendMsg(Vertex(edge.srcId, srcAttr), Vertex(edge.dstId, dstAttr), edge.attr)
+      sendMsg(EdgeTriplet(edge.srcId, srcAttr, edge.dstId, dstAttr, edge.attr))
     }
-    reduceByKey(mapX(graph.edgeRDD)(concatMap(_)(f)))(mergeMsg)
+    reduceByKey(mapX(edgeRDD)(concatMap(_)(f)))(mergeMsg)
   }
 
-  def mapVertices[A] (vertices: VertexRDD[A])(fn: Vertex[A] => A): VertexRDD[A] =
+  def mapVertices[A, C] (vertices: VertexRDD[A])(fn: Vertex[A] => C): VertexRDD[C] =
     mapX(vertices)(map(_)(v => Vertex(v.id, fn(v))))
 
-  def pregel[A, B, C] (graph: GraphRDD[A, B])
+  def Pregel[A, B, C] (graph: GraphRDD[A, B])
                       (initMsg: C)
                       (vprog: (Vertex[A], C) => A)
-                      (sendMsg: (Vertex[A], Vertex[A], B) => List[Vertex[C]])
+                      (sendMsg: EdgeTriplet[A, B] => List[Vertex[C]])
                       (mergeMsg: (C, C) => C): GraphRDD[A, B] = {
 
     val initGraph = GraphRDD(mapVertices(graph.vertexRDD)(vprog(_, initMsg)), graph.edgeRDD)
-    val initMsgs = concat(aggregateMessages(graph)(sendMsg)(mergeMsg))
+    val initMsgs = concat(aggregateMessages(initGraph)(sendMsg)(mergeMsg))
 
     def loop (graph: GraphRDD[A, B], msgs: List[Vertex[C]]): GraphRDD[A, B] =
       if (msgs == Nil)
@@ -173,14 +189,8 @@ object GraphX {
           },
           graph.edgeRDD
         )
-        val vertexRDD = filter(map(newGraph.vertexRDD)(filter(_) {
-          v => hasKey(msgs)(v.id)
-        }))(_ != Nil)
-        val edgeRDD = filter(map(newGraph.edgeRDD)(filter(_) {
-          e => hasKey(msgs)(e.srcId) && hasKey(msgs)(e.dstId)
-        }))(_ != Nil)
-        val subgraph = GraphRDD(vertexRDD, edgeRDD)
-        val newMsgs = concat(aggregateMessages(subgraph)(sendMsg)(mergeMsg))
+        val activeSet = filter(concat(graph.vertexRDD))(v => hasKey(msgs)(v.id))
+        val newMsgs = concat(aggregateMessagesWithActiveSet(newGraph)(sendMsg)(mergeMsg)(activeSet))
         loop(newGraph, newMsgs)
       }
     loop(initGraph, initMsgs)
