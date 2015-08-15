@@ -7,7 +7,7 @@
       <sourceFolder url="file://$MODULE_DIR$/DSL" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/implicit" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/laziness" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/purespark" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/PureSpark" isTestSource="false" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
