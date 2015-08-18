@@ -1,5 +1,7 @@
 import leon.lang._
 
+import scala.language.implicitConversions
+
 case class Rational (n: BigInt, d: BigInt) {
 
   private def gcd (a: BigInt, b: BigInt): BigInt = {
@@ -7,13 +9,10 @@ case class Rational (n: BigInt, d: BigInt) {
     if (b == 0) a.abs else gcd(b, a % b)
   } ensuring (_ != 0)
 
-  private def simplify: Rational = {
+  def simplify: Rational = {
     require(isRational)
-    val sn = BigInt(1)
-    val sd = BigInt(1)
-    //val divisor = gcd(sn * n, sd * d)
-    val divisor = BigInt(1)
-    Rational(sn * (n / divisor), sd * (d / divisor))
+    val divisor = gcd(n, d)
+    Rational(n / divisor, d / divisor)
   }
 
   def + (that: Rational): Rational = {
@@ -59,9 +58,9 @@ case class Rational (n: BigInt, d: BigInt) {
     this <= (other + this)
   }.holds
 
-  def idempotent_lemma (other: Rational): Boolean = {
+  def idempotent_lemma: Boolean = {
     require(isRational)
-    simplify.simplify == simplify
+    this.simplify.simplify == this.simplify
   }.holds
 
   def isRational = d != 0

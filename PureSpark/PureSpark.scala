@@ -1,3 +1,5 @@
+package purespark
+
 import scala.language.implicitConversions
 
 object Prelude {

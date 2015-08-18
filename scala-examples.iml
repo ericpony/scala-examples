@@ -8,25 +8,11 @@
       <sourceFolder url="file://$MODULE_DIR$/implicit" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/laziness" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/PureSpark" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/Leon" isTestSource="false" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="module" module-name="Leon" />
     <orderEntry type="library" name="scala-sdk-2.11.7" level="project" />
-    <orderEntry type="module-library">
-      <library name="Leon">
-        <CLASSES>
-          <root url="jar://$MODULE_DIR$/../leon-intellij-plugin/unmanaged/64/scalaz3_2.11-2.1.jar!/" />
-          <root url="jar://$MODULE_DIR$/../leon-intellij-plugin/unmanaged/64/vanuatoo_2.11-0.1.jar!/" />
-          <root url="jar://$MODULE_DIR$/../leon-intellij-plugin/unmanaged/64/cafebabe_2.11-1.2.jar!/" />
-          <root url="file://$MODULE_DIR$/../leon-intellij-plugin/target/scala-2.11/classes" />
-          <root url="file://$MODULE_DIR$/../leon-intellij-plugin/library" />
-        </CLASSES>
-        <JAVADOC />
-        <SOURCES>
-          <root url="file://$MODULE_DIR$/../leon-intellij-plugin/library" />
-          <root url="file://$MODULE_DIR$/../leon-intellij-plugin/target/scala-2.11/src_managed/main" />
-        </SOURCES>
-      </library>
-    </orderEntry>
   </component>
 </module>
