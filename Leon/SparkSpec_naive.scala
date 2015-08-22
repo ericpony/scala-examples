@@ -2,7 +2,7 @@ import leon.annotation._
 import leon.collection._
 import leon.lang._
 
-object SparkSpec extends App {
+object SparkSpec_naive extends App {
 
   @library
   def additiveFoldLeft (z: BigInt, list: List[BigInt]): BigInt = {
