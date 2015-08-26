@@ -29,7 +29,7 @@ object ScalaAggregatorSpec extends App {
   def checkSetUnion[B] (a1: Set[B], a2: Set[B], a3: Set[B], a4: Set[B], a5: Set[B]): Boolean = {
     def op (a: Set[B], b: Set[B]) = a ++ b
     op(a1, a2) == op(a2, a1) && op(a3, op(a4, a5)) == op(op(a3, a4), a5)
-  }.holds // verified by Leon
+  }.holds /* verified by Leon */
 
   /**
    * Check that integer addition is commutative and associative.
@@ -37,7 +37,7 @@ object ScalaAggregatorSpec extends App {
   def integer_add_prop (a1: BigInt, a2: BigInt, a3: BigInt, a4: BigInt, a5: BigInt): Boolean = {
     def op (a: BigInt, b: BigInt) = a + b
     op(a1, a2) == op(a2, a1) && op(a3, op(a4, a5)) == op(op(a3, a4), a5)
-  }.holds // verified by Leon
+  }.holds /* verified by Leon */
 
   /**
    * Check that 32-bit integer addition is commutative and associative.
@@ -46,7 +46,7 @@ object ScalaAggregatorSpec extends App {
   def int32_add_prop (a1: Int, a2: Int, a3: Int, a4: Int, a5: Int): Boolean = {
     def op (a: Int, b: Int) = a + b
     op(a1, a2) == op(a2, a1) && op(a3, op(a4, a5)) == op(op(a3, a4), a5)
-  }.holds // verified by Leon
+  }.holds /* verified by Leon */
 
   /**
    * Check that 64-bit floating-point addition is commutative and associative.
@@ -55,7 +55,7 @@ object ScalaAggregatorSpec extends App {
   def double_add_prop (a1: Double, a2: Double, a3: Double, a4: Double, a5: Double): Boolean = {
     def op (a: Double, b: Double) = a + b
     op(a1, a2) == op(a2, a1) && op(a3, op(a4, a5)) == op(op(a3, a4), a5)
-  }.holds // failed due to unsupported type Double
+  }.holds /* failed due to unsupported type Double */
 
   /**
    * Check that integer vector addition is commutative and associative.
@@ -74,7 +74,7 @@ object ScalaAggregatorSpec extends App {
         }
       }
     }
-  }.holds // verified by Leon
+  }.holds /* verified by Leon */
 
   /**
    * Check that point-wise union of set vectors is commutative and associative.
@@ -92,7 +92,7 @@ object ScalaAggregatorSpec extends App {
         }
       }
     }
-  }.holds // failed due to Z3 runtime exception
+  }.holds /* failed due to Z3 runtime exception */
 
   def int32_vector_add_lemma (a1: List[Int], a2: List[Int]): Boolean = {
     require(a1.size == a2.size)
@@ -106,7 +106,7 @@ object ScalaAggregatorSpec extends App {
         }
       }
     }
-  }.holds // timeout
+  }.holds /* timeout */
 
   /**
    * Check that the result of the combinator is not changed by list rotation.
@@ -172,7 +172,7 @@ object ScalaAggregatorSpec extends App {
     def combinator = reducel[BigInt] _
     determinism_lemma(list, op, combinator)
     //reducel_lemma(list, op)
-  }.holds // verified by Leon
+  }.holds /* verified by Leon */
 
   def reducel_union_lemma[B] (list: List[Set[B]]): Boolean = {
     require(list != Nil[Set[B]]())
@@ -181,7 +181,7 @@ object ScalaAggregatorSpec extends App {
     determinism_lemma(list, op, combinator)
     //determinism_lemma(list, op, reducel[Set[B]] _)
     //reducel_lemma(list, op)
-  }.holds // verified by Leon
+  }.holds /* verified by Leon */
 
   @ignore
   def reducel_append_lemma[B] (list: List[List[B]]): Boolean = {
@@ -190,7 +190,7 @@ object ScalaAggregatorSpec extends App {
     def combinator = reducel[List[B]] _
     determinism_lemma(list, op, combinator)
     //reducel_lemma[List[B]](list, op)
-  }.holds // Leon finds a counterexample
+  }.holds /* Leon finds a counterexample */
 
   def foldl_add_lemma (list: List[BigInt], zero: BigInt): Boolean = {
     require(list != Nil[BigInt]())
@@ -198,5 +198,5 @@ object ScalaAggregatorSpec extends App {
     def combinator (list: List[BigInt], op: (BigInt, BigInt) => BigInt) = foldl[BigInt, BigInt](list, zero, op)
     determinism_lemma(list, op, combinator)
     //foldl_lemma(list, op, zero)
-  }.holds // verified by Leon
+  }.holds /* verified by Leon */
 }
