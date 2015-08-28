@@ -2,9 +2,9 @@ import leon.annotation._
 import leon.collection._
 import leon.lang._
 import leon.proof._
+import ScalaCombinators._
 
-object ScalaAggregatorSpec extends App {
-
+object ScalaCombinators {
   @library
   def foldl[A, B] (list: List[A], zero: B, op: (B, A) => B): B =
     list match {
@@ -22,92 +22,9 @@ object ScalaAggregatorSpec extends App {
   def aggregate[A, B] (list: List[A], zero: B, seq: (B, A) => B, comb: (B, B) => B): B = {
     foldl(list, zero, seq)
   }
+}
 
-  /**
-   * Check that set union is commutative and associative.
-   */
-  def checkSetUnion[B] (a1: Set[B], a2: Set[B], a3: Set[B], a4: Set[B], a5: Set[B]): Boolean = {
-    def op (a: Set[B], b: Set[B]) = a ++ b
-    op(a1, a2) == op(a2, a1) && op(a3, op(a4, a5)) == op(op(a3, a4), a5)
-  }.holds /* verified by Leon */
-
-  /**
-   * Check that integer addition is commutative and associative.
-   */
-  def integer_add_prop (a1: BigInt, a2: BigInt, a3: BigInt, a4: BigInt, a5: BigInt): Boolean = {
-    def op (a: BigInt, b: BigInt) = a + b
-    op(a1, a2) == op(a2, a1) && op(a3, op(a4, a5)) == op(op(a3, a4), a5)
-  }.holds /* verified by Leon */
-
-  /**
-   * Check that 32-bit integer addition is commutative and associative.
-   * (Note that Leon handles overflow by wrapping, e.g., 2^32 == -2^31.)
-   */
-  def int32_add_prop (a1: Int, a2: Int, a3: Int, a4: Int, a5: Int): Boolean = {
-    def op (a: Int, b: Int) = a + b
-    op(a1, a2) == op(a2, a1) && op(a3, op(a4, a5)) == op(op(a3, a4), a5)
-  }.holds /* verified by Leon */
-
-  /**
-   * Check that 64-bit floating-point addition is commutative and associative.
-   */
-  @ignore
-  def double_add_prop (a1: Double, a2: Double, a3: Double, a4: Double, a5: Double): Boolean = {
-    def op (a: Double, b: Double) = a + b
-    op(a1, a2) == op(a2, a1) && op(a3, op(a4, a5)) == op(op(a3, a4), a5)
-  }.holds /* failed due to unsupported type Double */
-
-  /**
-   * Check that integer vector addition is commutative and associative.
-   * (Note that Leon handles overflow by wrapping, e.g., 2^32 == -2^31.)
-   */
-  def int_vector_add_prop (a1: List[BigInt], a2: List[BigInt], a3: List[BigInt], a4: List[BigInt], a5: List[BigInt]): Boolean = {
-    require(a1.size == a2.size && a2.size == a3.size && a3.size == a4.size && a4.size == a5.size)
-    if (a1.size == 0) true
-    else {
-      def op (a: List[BigInt], b: List[BigInt]) = a.zip(b).map(t => t._1 + t._2)
-      op(a1, a2) == op(a2, a1) && op(a3, op(a4, a5)) == op(op(a3, a4), a5) because {
-        a1 match {
-          case Nil() => trivial
-          case _     => integer_add_prop(a1.head, a2.head, a3.head, a4.head, a5.head) &&
-            int_vector_add_prop(a1.tail, a2.tail, a3.tail, a4.tail, a5.tail)
-        }
-      }
-    }
-  }.holds /* verified by Leon */
-
-  /**
-   * Check that point-wise union of set vectors is commutative and associative.
-   */
-  def set_vector_add_prop[B] (a1: List[Set[B]], a2: List[Set[B]], a3: List[Set[B]], a4: List[Set[B]], a5: List[Set[B]]): Boolean = {
-    require(a1.size == a2.size && a2.size == a3.size && a3.size == a4.size && a4.size == a5.size)
-    if (a1.size == 0) true
-    else {
-      def op (a: List[Set[B]], b: List[Set[B]]) = a.zip(b).map(t => t._1 ++ t._2)
-      op(a1, a2) == op(a2, a1) && op(a3, op(a4, a5)) == op(op(a3, a4), a5) because {
-        a1 match {
-          case Nil() => trivial
-          case _     => checkSetUnion(a1.head, a2.head, a3.head, a4.head, a5.head) &&
-            set_vector_add_prop(a1.tail, a2.tail, a3.tail, a4.tail, a5.tail)
-        }
-      }
-    }
-  }.holds /* failed due to Z3 runtime exception */
-
-  def int32_vector_add_lemma (a1: List[Int], a2: List[Int]): Boolean = {
-    require(a1.size == a2.size)
-    if (a1.size == 0) true
-    else {
-      def op (a: List[Int], b: List[Int]) = a.zip(b).map(t => t._1 + t._2)
-      op(a1, a2) == (a1.head + a2.head) :: op(a1.tail, a2.tail) because {
-        a1.tail match {
-          case Nil() => trivial
-          case _     => op(a1, a2).head == a1.head + a2.head && int32_vector_add_lemma(a1.tail, a2.tail)
-        }
-      }
-    }
-  }.holds /* timeout */
-
+object ScalaCombinatorSpec extends App {
   /**
    * Check that the result of the combinator is not changed by list rotation.
    */
