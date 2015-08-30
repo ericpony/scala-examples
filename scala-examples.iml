@@ -14,5 +14,6 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="Leon" />
     <orderEntry type="library" name="scala-sdk-2.11.7" level="project" />
+    <orderEntry type="library" name="scala-sdk-2.11.7" level="application" />
   </component>
 </module>

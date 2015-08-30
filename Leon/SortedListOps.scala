@@ -1,4 +1,4 @@
-import leon.annotation.induct
+import leon.annotation.{ignore, induct}
 import leon.collection._
 import leon.lang._
 import leon.proof._
@@ -24,13 +24,16 @@ object SortedListOps {
   /**
    * Merge two sorted lists to obtain one sorted list.
    */
+  @induct
   def mergeSortedList (l1: List[BigInt], l2: List[BigInt]): List[BigInt] = {
     require(isSorted(l1) && isSorted(l2))
     l2 match {
       case Nil()       => l1
       case Cons(x, xs) => insert(mergeSortedList(l1, xs), x)
     }
-  } ensuring (res => res.content == l1.content ++ l2.content) /* verified by Leon */
+  } ensuring {
+    res =>  isSorted(res) && res.content == l1.content ++ l2.content
+  } /* verified by Leon */
 
   /**
    * Merge two lists to obtain one sorted list.
@@ -145,7 +148,7 @@ object SortedListOps {
   /**
    * Check that sorting is idempotent.
    */
-  @induct
+  @ignore
   def sort_lemma (list: List[BigInt]) = {
     //require(list != Nil[BigInt]())
     sort(list) == sort(sort(list))
@@ -156,7 +159,8 @@ object SortedListOps {
     else if (list.head == v) list.tail
     else Cons(list.head, delete(list.tail, v))
   } ensuring { res =>
-    res.size == (if (list contains v) list.size - 1 else list.size)
+    res.size == (if (list contains v) list.size - 1 else list.size) &&
+      res.content.subsetOf(list.content)
   } /* verified by Leon */
 
   def sort_delete_lemma3 (list: List[BigInt], m: BigInt): Boolean = {
@@ -271,10 +275,6 @@ object SortedListOps {
     merge_lemma2(l1, l2, sort(l1 ++ l2), sort(l2 ++ l1))
   } holds
 
-  /**
-   * If l2 doesn't contain sort(l1 ++ l2).head and L == sort(l1 ++ l2),
-   * then L.tail == sort(delete(l1, L.head) ++ l2)
-   */
   def sort_tail_lemma1 (l1: List[BigInt], l2: List[BigInt], L: List[BigInt]): Boolean = {
     l1 == Nil[BigInt]() ||
       l2 == Nil[BigInt]() || {
@@ -361,6 +361,28 @@ object SortedListOps {
     !l1.contains(m)
   } holds
 
+  @induct
+  def distinct_delete_lemma (list: List[BigInt], m: BigInt): Boolean = {
+    require(distinct(list))
+    distinct(delete(list, m))
+  } holds
+
+  @induct
+  def distinct_delete_lemma1 (l1: List[BigInt], l2: List[BigInt], m: BigInt): Boolean = {
+    require(distinct(l1 ++ l2))
+    distinct(delete(l1, m) ++ l2) because {
+      distinct(l1) && distinct_delete_lemma(l1, m)
+    }
+  } holds
+
+  @induct
+  def distinct_delete_lemma2 (l1: List[BigInt], l2: List[BigInt], m: BigInt): Boolean = {
+    require(distinct(l1 ++ l2))
+    distinct(l1 ++ delete(l2, m)) because {
+      distinct(l1) && distinct_delete_lemma(l2, m)
+    }
+  } holds
+
   /**
    * Check that sort(l1 ++ l2) == sort(l2 ++ l1).
    */
@@ -378,11 +400,12 @@ object SortedListOps {
               L1.tail == L2.tail because {
                 check { L1.tail == sort(l11 ++ l2) because sort_tail_lemma1(l1, l2, L1) } &&
                   check { L2.tail == sort(l2 ++ l11) because sort_tail_lemma2(l1, l2, L2) } &&
-                  check { L1.tail == L2.tail because merge_lemma2(l11, l2, L1.tail, L2.tail) }
+                  check { distinct(l11 ++ l2) because distinct_delete_lemma1(l1, l2, L1.head) } &&
+                  check { merge_lemma2(l11, l2, L1.tail, L2.tail) }
               }
             }
           } else {
-            val l22 = delete(l2, L2.head)
+            val l22 = delete(l2, L1.head)
             check {
               L1.head == L2.head because merge_lemma1(l1, l2, L1, L2)
             } && check {
@@ -390,16 +413,17 @@ object SortedListOps {
                 check { !l1.contains(L1.head) because distinct_lemma(l1, l2, L1.head) } &&
                   check { L1.tail == sort(l1 ++ l22) because sort_tail_lemma3(l1, l2, L1) } &&
                   check { L2.tail == sort(l22 ++ l1) because sort_tail_lemma4(l1, l2, L2) } &&
-                  check { L1.tail == L2.tail because merge_lemma2(l1, l22, L1.tail, L2.tail) }
+                  check { distinct(l1 ++ l22) because distinct_delete_lemma2(l1, l2, L1.head) } &&
+                  check { merge_lemma2(l1, l22, L1.tail, L2.tail) }
               }
             }
           }
         }
       } else true
     }
-  } holds
+  } holds /* verified by Leon */
 
-  @induct
+  @ignore
   def merge_lemma4 (l1: List[BigInt], l2: List[BigInt]) = {
     require(l1.content == l2.content && l1.size == l2.size)
     sort(l1) == sort(l2)
