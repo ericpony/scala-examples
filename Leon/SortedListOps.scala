@@ -32,7 +32,7 @@ object SortedListOps {
       case Cons(x, xs) => insert(mergeSortedList(l1, xs), x)
     }
   } ensuring {
-    res =>  isSorted(res) && res.content == l1.content ++ l2.content
+    res => isSorted(res) && res.content == l1.content ++ l2.content
   } /* verified by Leon */
 
   /**
@@ -163,57 +163,10 @@ object SortedListOps {
       res.content.subsetOf(list.content)
   } /* verified by Leon */
 
+  @induct
   def sort_delete_lemma3 (list: List[BigInt], m: BigInt): Boolean = {
-    sort(delete(list, m)) == delete(sort(list), m) because {
-      true
-      //      list match {
-      //        case Nil()      => true
-      //        case Cons(h, t) =>
-      //          if(h == m) true
-      //          else sort_delete_lemma3(t, m)
-      //      }
-    }
-  } holds
-
-  @induct
-  def sort_delete_lemma2 (l1: List[BigInt], l2: List[BigInt]): Boolean = {
-    l1 == Nil[BigInt]() ||
-      l2 == Nil[BigInt]() || {
-      val m = sort(l1 ++ l2).head
-      val L1t = if (l1 contains m) delete(l1, m) else l1
-      val L2t = if (l1 contains m) l2 else delete(l2, m)
-      sort(L1t ++ L2t) == sort(l1 ++ l2).tail because {
-        check {
-          sort(delete(l1 ++ l2, m)) == sort(l1 ++ l2).tail && sort_delete_lemma2(l1 ++ l2)
-        } && check {
-          delete(l1 ++ l2, m) == L1t ++ L2t
-        }
-      }
-    }
-  } holds /* verified by Leon */
-
-  def sort_delete_lemma (l1: List[BigInt], l2: List[BigInt], L: List[BigInt], L2: List[BigInt]): Boolean = {
-    l1 == Nil[BigInt]() ||
-      l2 == Nil[BigInt]() || {
-      if (L2 == sort(l1 ++ l2)) {
-        val m = L2.head
-        if (L == sort(delete(l1 ++ l2, m))) {
-          L == L2.tail because {
-            sort(delete(l1 ++ l2, m)) == L2.tail &&
-              sort_delete_lemma2(l1 ++ l2)
-          }
-        } else true
-      } else true
-    }
-  } holds
-
-  /* verified by Leon */
-  @induct
-  def sort_delete_lemma2 (list: List[BigInt]): Boolean = {
-    list == Nil[BigInt]() || {
-      val l = sort(list)
-      sort(delete(list, l.head)) == l.tail
-    }
+    require(list != Nil[BigInt]() && m == sort(list).head)
+    sort(delete(list, m)) == delete(sort(list), m)
   } holds /* verified by leon */
 
   @induct
@@ -259,21 +212,13 @@ object SortedListOps {
     }
   } holds /* verified by Leon */
 
-  def merge_lemma3 (l1: List[BigInt], l2: List[BigInt]) = {
-    l1 == Nil[BigInt]() ||
-      l2 == Nil[BigInt]() || {
-      !(l1.head == l2.head && l1.tail == l2.tail) || l1 == l2
-    }
-  } holds
-
-
   /**
    * Check that the merge operation is commutative.
    */
   def merge_lemma (l1: List[BigInt], l2: List[BigInt]) = {
     require(distinct(l1 ++ l2))
     merge_lemma2(l1, l2, sort(l1 ++ l2), sort(l2 ++ l1))
-  } holds
+  } holds /* verified by Leon */
 
   def sort_tail_lemma1 (l1: List[BigInt], l2: List[BigInt], L: List[BigInt]): Boolean = {
     l1 == Nil[BigInt]() ||
@@ -359,29 +304,25 @@ object SortedListOps {
   def distinct_lemma (l1: List[BigInt], l2: List[BigInt], m: BigInt): Boolean = {
     require(distinct(l1 ++ l2) && l2.contains(m))
     !l1.contains(m)
-  } holds
-
-  @induct
-  def distinct_delete_lemma (list: List[BigInt], m: BigInt): Boolean = {
-    require(distinct(list))
-    distinct(delete(list, m))
-  } holds
+  } holds /* verified by Leon */
 
   @induct
   def distinct_delete_lemma1 (l1: List[BigInt], l2: List[BigInt], m: BigInt): Boolean = {
     require(distinct(l1 ++ l2))
-    distinct(delete(l1, m) ++ l2) because {
-      distinct(l1) && distinct_delete_lemma(l1, m)
-    }
-  } holds
+    distinct(delete(l1, m) ++ l2) because distinct_delete_lemma3(l1, m)
+
+  } holds /* verified by Leon */
 
   @induct
   def distinct_delete_lemma2 (l1: List[BigInt], l2: List[BigInt], m: BigInt): Boolean = {
     require(distinct(l1 ++ l2))
-    distinct(l1 ++ delete(l2, m)) because {
-      distinct(l1) && distinct_delete_lemma(l2, m)
-    }
-  } holds
+    distinct(l1 ++ delete(l2, m)) because distinct_delete_lemma3(l2, m)
+  } holds /* verified by Leon */
+
+  @induct
+  def distinct_delete_lemma3 (list: List[BigInt], m: BigInt): Boolean = {
+    !distinct(list) || distinct(delete(list, m))
+  } holds /* verified by Leon */
 
   /**
    * Check that sort(l1 ++ l2) == sort(l2 ++ l1).
