@@ -21,12 +21,13 @@ object SortedListSpec {
     merge(l1, l2) == merge(l2, l1) because merge_commu_lemma(l1, l2)
   } holds /* verified by Leon */
 
-  @induct
+  /* Work in progress */
+  @ignore
   def merge_associative_prop (l1: List[BigInt], l2: List[BigInt], l3: List[BigInt]) = {
     require(distinct(l1 ++ l2 ++ l3) && l1 ++ l2 ++ l3 != Nil[BigInt]())
     val L1 = merge(merge(l1, l2), l3)
     val L2 = merge(l1, merge(l2, l3))
-    L1.head == L2.head because merge_assoc_lemma(l1, l2, l3)
+    L1 == L2 because merge_assoc_lemma(l1, l2, l3)
   } holds
 
   /* Sort operations are idempotent. */
@@ -115,7 +116,7 @@ object SortedListOps {
   /**
    * Tell whether a list is sorted in ascending order.
    * @param list a list
-   * @return whether the provided list is sorted in ascending order
+   * @return whether the input list is sorted in ascending order
    */
   def isSorted (list: List[BigInt]): Boolean = {
     list match {
@@ -128,9 +129,24 @@ object SortedListOps {
   }
 
   /**
+   * Remove an element from a list.
+   * @param list a list
+   * @param e an element
+   * @return a list obtained by removing e from the input list
+   */
+  def delete (list: List[BigInt], e: BigInt): List[BigInt] = {
+    if (list == Nil[BigInt]()) list
+    else if (list.head == e) list.tail
+    else Cons(list.head, delete(list.tail, e))
+  } ensuring { res =>
+    res.size == (if (list contains e) list.size - 1 else list.size) &&
+      res.content.subsetOf(list.content)
+  } /* verified by Leon */
+
+  /**
    * Obtain the minimal element of the input list.
    * @param list a list
-   * @return the minimal element of the provided list
+   * @return the minimal element of the input list
    */
   def min (list: List[BigInt]): BigInt = {
     require(list != Nil[BigInt]())
@@ -149,15 +165,36 @@ object SortedListOps {
 
 object SortedListLemmas {
 
+  def sort_idem_lemma (list: List[BigInt]): Boolean = {
+    if (list == Nil[BigInt]()) trivial
+    else {
+      sort(list) == sort(sort(list)) because {
+        check {
+          sort(list).head == sort(sort(list)).head because {
+            check { sort(list).head == min(list) because min_head_lemma(list) } &&
+              check { sort(sort(list)).head == min(sort(list)) because min_head_lemma(sort(list)) } &&
+              check { min(sort(list)) == min(list) because min_sort_lemma(list) }
+          }
+        } && check {
+          val m = sort(list).head
+          sort(list).tail == sort(sort(list)).tail because {
+            check { sort(list).tail == sort(delete(list, m)) because sort_tail_lemma(list) } &&
+              check { sort(sort(list)).tail == sort(delete(sort(list), m)) } &&
+              check { delete(sort(list), m) == sort(delete(list, m)) because sort_delete_lemma(list, m) } &&
+              check { sort(sort(delete(list, m))) == sort(delete(list, m)) because sort_idem_lemma(delete(list, m)) }
+          }
+        }
+      }
+    }
+  } holds /* verified by Leon */
+
   @induct
   def min_lemma (list: List[BigInt], m: BigInt): Boolean = {
     require(list != Nil[BigInt]())
     m > min(list) || list.forall(m <= _)
   } holds /* verified by Leon */
 
-  /**
-   * Check that min(list) is indeed the minimal element of list.
-   */
+  /* Check that min(list) is indeed the minimal element of list. */
   def min_lemma2 (list: List[BigInt]): Boolean = {
     require(list != Nil[BigInt]())
     val m = min(list)
@@ -203,20 +240,20 @@ object SortedListLemmas {
       min(l1 ++ l2) == min(min(l1), min(l2))
   } holds /* verified by Leon */
 
-  def delete (list: List[BigInt], e: BigInt): List[BigInt] = {
-    if (list == Nil[BigInt]()) list
-    else if (list.head == e) list.tail
-    else Cons(list.head, delete(list.tail, e))
-  } ensuring { res =>
-    res.size == (if (list contains e) list.size - 1 else list.size) &&
-      res.content.subsetOf(list.content)
-  } /* verified by Leon */
-
   @induct
   def sort_delete_lemma (list: List[BigInt], m: BigInt): Boolean = {
     require(list != Nil[BigInt]() && m == sort(list).head)
     sort(delete(list, m)) == delete(sort(list), m)
   } holds /* verified by leon */
+
+  //  @induct
+  //  def sort_delete_lemma (l1: List[BigInt], l2: List[BigInt], L: List[BigInt]): Boolean = {
+  //    require(list != Nil[BigInt]() && m == sort(list).head)
+  //    if(L == sort(l1_l1 contains m) {
+  //      delete(sort(l1 ++ l2), m)
+  //    }
+  //    sort(delete(list, m)) == delete(sort(list), m)
+  //  } holds /* verified by leon */
 
   @induct
   def delete_contain_lemma (list: List[BigInt], m: BigInt): Boolean = {
@@ -359,6 +396,13 @@ object SortedListLemmas {
     distinct(l1) && distinct(l2)
   } holds /* verified by Leon */
 
+  @ignore
+  @induct
+  def distinct_sort_lemma (list: List[BigInt]): Boolean = {
+    require(distinct(list))
+    distinct(sort(list))
+  } holds /* timeout */
+
   @induct
   def distinct_excl_lemma (l1: List[BigInt], l2: List[BigInt], m: BigInt): Boolean = {
     require(distinct(l1 ++ l2) && l2.contains(m))
@@ -419,112 +463,73 @@ object SortedListLemmas {
     }
   } holds /* verified by Leon */
 
-  //  @induct
-  //  def merge_assoc_lemma (l1: List[BigInt], l2: List[BigInt], l3: List[BigInt]) = {
-  //    require(distinct(l1 ++ l2 ++ l3))
-  //    if (l1 == Nil[BigInt]()) sort_idem_lemma(l2)
-  //    else if (l2 == Nil[BigInt]()) sort_idem_lemma(l3) && sort_idem_lemma(l1)
-  //    else if (l3 == Nil[BigInt]()) sort_idem_lemma(l2)
-  //    else {
-  //      val L1 = merge(merge(l1, l2), l3)
-  //      val L2 = merge(l1, merge(l2, l3))
-  //      L1.head == L2.head because merge_assoc_lemma2(l1, l2, l3)
-  //    }
-  //  } holds
-
+  @ignore
   @induct
-  def merge_assoc_lemma (l1: List[BigInt], l2: List[BigInt], l3: List[BigInt]) = {
+  def merge_assoc_lemma (l1: List[BigInt], l2: List[BigInt], l3: List[BigInt]): Boolean = {
     require(distinct(l1 ++ l2 ++ l3) && l1 ++ l2 ++ l3 != Nil[BigInt]())
-    if (l1 == Nil[BigInt]()) sort_idem_lemma(l2)
-    else if (l2 == Nil[BigInt]()) sort_idem_lemma(l3) && sort_idem_lemma(l1)
-    else if (l3 == Nil[BigInt]()) sort_idem_lemma(l2)
-    else {
-      val L1 = merge(merge(l1, l2), l3)
-      val L2 = merge(l1, merge(l2, l3))
-      L1 == L2 because {
-        check {
-          L1.head == L2.head because merge_assoc_lemma2(l1, l2, l3)
+    val L1 = merge(merge(l1, l2), l3)
+    val L2 = merge(l1, merge(l2, l3))
+    L1 == L2 because {
+      check {
+        L1.head == L2.head because merge_assoc_lemma2(l1, l2, l3)
+      } && check {
+        L1.tail == L2.tail because {
+          if (l1 contains L1.head) {
+            check { sort(l1 ++ l2).contains(L1.head) } &&
+              check { (l1 ++ l2).contains(L1.head) } &&
+              check { distinct(l1 ++ l2) && distinct(l3) because distinct_sublist_lemma(l1 ++ l2, l3) } &&
+              check { distinct(sort(l1 ++ l2)) because distinct_sort_lemma(l1 ++ l2) } &&
+              check { distinct(sort(l1 ++ l2) ++ l3) /* because ... */ } &&
+              check { !l2.contains(L1.head) because distinct_excl_lemma(l1, l2, L1.head) } &&
+              check { !l3.contains(L1.head) because distinct_excl_lemma(sort(l1 ++ l2), l3, L1.head) } &&
+              check { L1.tail == sort(delete(sort(l1 ++ l2), L1.head) ++ l3) because sort_tail_lemma1(sort(l1 ++ l2), l3, L1) } &&
+              check { L1.tail == sort(sort(delete(l1 ++ l2, L1.head)) ++ l3) because sort_delete_lemma(l1 ++ l2, L1.head) } &&
+              check { L1.tail == sort(sort(delete(l1, L1.head) ++ l2) ++ l3) because delete_concat_lemma2(l1, l2, L1.head) } &&
+              check { L2.tail == sort(delete(l1, L2.head) ++ sort(l2 ++ l3)) because sort_tail_lemma1(l1, sort(l2 ++ l3), L2) } &&
+              check { L1.tail == L2.tail because merge_assoc_lemma(delete(l1, L1.head), l2, l3) }
+          } else true /* ... */
         }
       }
     } // end of proving L1 == L2
   } holds /* proof in progress */
 
+  @ignore
   @induct
   def merge_assoc_lemma2 (l1: List[BigInt], l2: List[BigInt], l3: List[BigInt]) = {
     require(distinct(l1 ++ l2 ++ l3) && l1 ++ l2 ++ l3 != Nil[BigInt]())
-    if (l1 == Nil[BigInt]()) sort_idem_lemma(l2)
-    else if (l2 == Nil[BigInt]()) sort_idem_lemma(l3) && sort_idem_lemma(l1)
-    else if (l3 == Nil[BigInt]()) sort_idem_lemma(l2)
-    else {
-      val L1 = merge(merge(l1, l2), l3)
-      val L2 = merge(l1, merge(l2, l3))
-      L1.head == L2.head because {
-        check { min(L1) == L1.head && min(L2) == L2.head && isSorted(L1) && isSorted(L2) } &&
-          check {
-            min(L1) == min(L2) because {
-              check { min(sort(l1 ++ l2)) == min(l1 ++ l2) because min_sort_lemma(l1 ++ l2) } &&
-                check { min(sort(l2 ++ l3)) == min(l2 ++ l3) because min_sort_lemma(l2 ++ l3) } &&
-                check { min(L1) == min(sort(l1 ++ l2) ++ l3) because min_sort_lemma(sort(l1 ++ l2) ++ l3) } &&
-                check { min(L2) == min(l1 ++ sort(l2 ++ l3)) because min_sort_lemma(l1 ++ sort(l2 ++ l3)) } &&
-                check { min(L2) == min(min(l1), min(sort(l2 ++ l3))) because min_concat_lemma2(l1, l2 ++ l3) } &&
-                check { min(L2) == min(min(l1), min(l2 ++ l3)) } &&
-                check { min(L2) == min(l1 ++ l2 ++ l3) } &&
-                check {
-                  min(L1) == min(min(sort(l1 ++ l2)), min(l3)) because {
-                    check { min(min(sort(l1 ++ l2)), min(l3)) == min(min(l1 ++ l2), min(l3)) } &&
-                      check { min(L1) == min(sort(l1 ++ l2) ++ l3) } &&
-                      check {
-                        min(sort(l1 ++ l2) ++ l3) == min(min(sort(l1 ++ l2)), min(l3)) because
-                          min_concat_lemma2(sort(l1 ++ l2), l3)
-                      } &&
-                      check { min(min(sort(l1 ++ l2)), min(l3)) == min(min(l1 ++ l2), min(l3)) }
-                  } &&
-                    check { min(L1) == min(min(l1 ++ l2), min(l3)) }
-                } &&
-                check { min(L1) == min(l1 ++ l2 ++ l3) because min_concat_lemma2(l1 ++ l2, l3) }
-            }
-          }
-      }
-    }
-  } holds
-
-  //  @induct
-  //  def merge_assoc_lemma2 (l1: List[BigInt], l2: List[BigInt], l3: List[BigInt]) = {
-  //    require(distinct(l1 ++ l2 ++ l3))
-  //    val L1 = merge(merge(l1, l2), l3)
-  //    val L2 = merge(l1, merge(l2, l3))
-  //    L1 == L2 because {
-  //      check {
-  //        distinct(sort(l1 ++ l2)) && distinct(l3) because distinct_sublist_lemma(sort(l1 ++ l2), l3)
-  //      } &&
-  //        check {
-  //          sort(sort(l1 ++ l2) ++ l3) == sort(l3 ++ sort(l1 ++ l2)) because merge_commu_lemma(sort(l1 ++ l2), l3)
-  //        } && check {
-  //        sort(l3 ++ sort(l1 ++ l2)) == sort(l3 ++ l1 ++ l2) because sort_idem_lemma(l1 ++ l2)
-  //      }
-  //    }
-  //  } holds
-
-  def sort_idem_lemma (list: List[BigInt]): Boolean = {
-    if (list == Nil[BigInt]()) trivial
-    else {
-      sort(list) == sort(sort(list)) because {
+    val L1 = merge(merge(l1, l2), l3)
+    val L2 = merge(l1, merge(l2, l3))
+    L1.head == L2.head because {
+      check { min(L1) == L1.head && min(L2) == L2.head && isSorted(L1) && isSorted(L2) } &&
         check {
-          sort(list).head == sort(sort(list)).head because {
-            check { sort(list).head == min(list) because min_head_lemma(list) } &&
-              check { sort(sort(list)).head == min(sort(list)) because min_head_lemma(sort(list)) } &&
-              check { min(sort(list)) == min(list) because min_sort_lemma(list) }
-          }
-        } && check {
-          val m = sort(list).head
-          sort(list).tail == sort(sort(list)).tail because {
-            check { sort(list).tail == sort(delete(list, m)) because sort_tail_lemma(list) } &&
-              check { sort(sort(list)).tail == sort(delete(sort(list), m)) } &&
-              check { delete(sort(list), m) == sort(delete(list, m)) because sort_delete_lemma(list, m) } &&
-              check { sort(sort(delete(list, m))) == sort(delete(list, m)) because sort_idem_lemma(delete(list, m)) }
+          /*
+            We have to do case analysis based on the emptiness of l1, l2, and l3.
+            There are 2^3 - 1 = 7 cases in total. The following case assumes that
+            all of l1, l2 and l3 are non-empty.
+          */
+          min(L1) == min(L2) because {
+            check { min(sort(l1 ++ l2)) == min(l1 ++ l2) because min_sort_lemma(l1 ++ l2) } &&
+              check { min(sort(l2 ++ l3)) == min(l2 ++ l3) because min_sort_lemma(l2 ++ l3) } &&
+              check { min(L1) == min(sort(l1 ++ l2) ++ l3) because min_sort_lemma(sort(l1 ++ l2) ++ l3) } &&
+              check { min(L2) == min(l1 ++ sort(l2 ++ l3)) because min_sort_lemma(l1 ++ sort(l2 ++ l3)) } &&
+              check { min(L2) == min(min(l1), min(sort(l2 ++ l3))) because min_concat_lemma2(l1, l2 ++ l3) } &&
+              check { min(L2) == min(min(l1), min(l2 ++ l3)) } &&
+              check { min(L2) == min(l1 ++ l2 ++ l3) } &&
+              check {
+                min(L1) == min(min(sort(l1 ++ l2)), min(l3)) because {
+                  check { min(min(sort(l1 ++ l2)), min(l3)) == min(min(l1 ++ l2), min(l3)) } &&
+                    check { min(L1) == min(sort(l1 ++ l2) ++ l3) } &&
+                    check {
+                      min(sort(l1 ++ l2) ++ l3) == min(min(sort(l1 ++ l2)), min(l3)) because
+                        min_concat_lemma2(sort(l1 ++ l2), l3)
+                    } &&
+                    check { min(min(sort(l1 ++ l2)), min(l3)) == min(min(l1 ++ l2), min(l3)) }
+                } &&
+                  check { min(L1) == min(min(l1 ++ l2), min(l3)) }
+              } &&
+              check { min(L1) == min(l1 ++ l2 ++ l3) because min_concat_lemma2(l1 ++ l2, l3) }
           }
         }
-      }
     }
-  } holds /* verified by Leon */
+  } holds
 }
