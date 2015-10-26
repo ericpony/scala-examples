@@ -2,6 +2,7 @@ import leon.annotation.{ignore, induct}
 import leon.collection._
 import leon.lang._
 import leon.proof._
+import leon.lang.xlang._
 import SortedListOps._
 import SortedListLemmas._
 import scala.language.postfixOps
@@ -104,14 +105,13 @@ object SortedListOps {
    * @param list a list
    * @return a sorted list
    */
-  def sort (list: List[BigInt]): List[BigInt] = {
-    list match {
-      case Nil()       => list
-      case Cons(x, xs) => insert(sort(xs), x)
-    }
-  } ensuring {
-    res => res.content == list.content && isSorted(res)
-  } /* verified by Leon */
+  def sort (list: List[BigInt]): List[BigInt] = epsilon((o: List[BigInt]) =>
+    list.content == o.content && list.size == o.size && isSorted(list))
+
+  //    list match {
+  //      case Nil()       => list
+  //      case Cons(x, xs) => insert(sort(xs), x)
+  //    }
 
   /**
    * Tell whether a list is sorted in ascending order.
@@ -187,6 +187,7 @@ object SortedListLemmas {
       }
     }
   } holds /* verified by Leon */
+
 
   @induct
   def min_lemma (list: List[BigInt], m: BigInt): Boolean = {
